@@ -121,6 +121,7 @@ impl<'a> ChessAssets<'a> {
 pub struct Board {
     squares: [u8; 64],
     _turn: bool,
+    drag: Option<egui::Pos2>,
 }
 
 impl Default for Board {
@@ -128,6 +129,7 @@ impl Default for Board {
         let mut board = Board {
             squares: [Piece::NONE as u8; 64],
             _turn: false,
+            drag: None,
         };
 
         board.squares[0] = Piece::ROOK as u8 | Piece::BLACK as u8;
@@ -161,7 +163,7 @@ impl Default for Board {
 }
 
 impl Board {
-    pub fn draw_board(&self, ui: &mut egui::Ui, assets: &ChessAssets) {
+    pub fn draw_board(&mut self, ui: &mut egui::Ui, assets: &ChessAssets) {
         let size = ui.available_size();
 
         let (tile_size, offset) = if size.x > size.y {
@@ -187,14 +189,106 @@ impl Board {
                     .rect_filled(rect, 0.0, self.tile_color_at(x, y));
 
                 let board_pos = x + y * 8;
-                if let Some(piece_img) = ChessAssets::get(assets, self.squares[board_pos]) {
-                    ui.put(
-                        rect,
-                        piece_img.clone().fit_to_exact_size(egui::Vec2 {
-                            x: tile_size,
-                            y: tile_size,
-                        }),
-                    );
+                // if let Some(piece_img) = ChessAssets::get(assets, self.squares[board_pos]) {
+                //     ui.put(
+                //         rect,
+                //         piece_img.clone().fit_to_exact_size(egui::Vec2 {
+                //             x: tile_size,
+                //             y: tile_size,
+                //         }),
+                //     );
+                // }
+
+                // Check for drag interaction
+                if ui
+                    .interact(rect, egui::Id::new((x, y)), egui::Sense::click_and_drag())
+                    .drag_started()
+                {
+                    self.drag = Some(egui::Pos2::new(x as f32, y as f32));
+                }
+
+                // Render piece
+                if self.squares[board_pos] != Piece::NONE as u8 {
+                    // If this is the dragged piece, skip rendering it here
+                    let cur_pos = egui::Pos2 {
+                        x: x as f32,
+                        y: y as f32,
+                    };
+                    if Some(cur_pos) != self.drag {
+                        if let Some(piece_img) = ChessAssets::get(assets, self.squares[board_pos]) {
+                            ui.put(
+                                rect,
+                                piece_img.clone().fit_to_exact_size(egui::Vec2 {
+                                    x: tile_size,
+                                    y: tile_size,
+                                }),
+                            );
+                        }
+                    }
+                }
+
+                // Handle drag
+                if let Some(init_drag_pos) = self.drag {
+                    if let Some(pointer_pos) = ui.input(|i| i.pointer.interact_pos()) {
+                        let drag_rect = egui::Rect::from_two_pos(
+                            egui::Pos2::new(
+                                pointer_pos.x - tile_size / 2.,
+                                pointer_pos.y - tile_size / 2.,
+                            ),
+                            egui::Pos2::new(
+                                pointer_pos.x + tile_size / 2.,
+                                pointer_pos.y + tile_size / 2.,
+                            ),
+                        );
+
+                        // if drag_rect.intersects(rect) {
+                        //     ui.painter().rect_filled(
+                        //         rect,
+                        //         0.0,
+                        //         egui::Color32::from_rgba_premultiplied(0, 0, 0, 100),
+                        //     );
+
+                        let drag_board_pos =
+                            (init_drag_pos.x as usize) + (init_drag_pos.y as usize) * 8;
+                        if let Some(piece_img) =
+                            ChessAssets::get(assets, self.squares[drag_board_pos])
+                        {
+                            ui.put(
+                                drag_rect,
+                                piece_img.clone().fit_to_exact_size(egui::Vec2 {
+                                    x: tile_size,
+                                    y: tile_size,
+                                }),
+                            );
+                        }
+                        // }
+                    }
+                }
+
+                println!("{:?}", self.drag);
+
+                // Handle drop
+                if ui.input(|i| i.pointer.any_released()) {
+                    println!("Pointer released");
+                    if let Some(init_drag_pos) = self.drag {
+                        if let Some(pointer_pos) = ui.input(|i| i.pointer.interact_pos()) {
+                            let end_col =
+                                ((pointer_pos.x - rect.left()) / tile_size).floor() as usize;
+                            let end_row =
+                                ((pointer_pos.y - rect.top()) / tile_size).floor() as usize;
+
+                            // Move the piece
+                            if end_row < 8 && end_col < 8 {
+                                let init_board_pos =
+                                    (init_drag_pos.x as usize) + (init_drag_pos.y as usize) * 8;
+
+                                let destination_board_pos = end_col + end_row * 8;
+                                self.squares[destination_board_pos] = self.squares[init_board_pos];
+                                self.squares[init_board_pos] = Piece::NONE as u8;
+                            }
+                        }
+                        self.drag = None;
+                    }
                 }
             }
         }
