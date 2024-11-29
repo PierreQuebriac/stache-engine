@@ -55,26 +55,58 @@ impl<'a> ChessAssets<'a> {
 
         // Map pieces to their SVG file paths
         let pieces = [
-            (Piece::PAWN as u8 | Piece::WHITE as u8, "white_pawn.svg"),
-            (Piece::PAWN as u8 | Piece::BLACK as u8, "black_pawn.svg"),
-            (Piece::BISHOP as u8 | Piece::WHITE as u8, "white_bishop.svg"),
-            (Piece::BISHOP as u8 | Piece::BLACK as u8, "black_bishop.svg"),
-            (Piece::KNIGHT as u8 | Piece::WHITE as u8, "white_knight.svg"),
-            (Piece::KNIGHT as u8 | Piece::BLACK as u8, "black_knight.svg"),
-            (Piece::ROOK as u8 | Piece::WHITE as u8, "white_rook.svg"),
-            (Piece::ROOK as u8 | Piece::BLACK as u8, "black_rook.svg"),
-            (Piece::KING as u8 | Piece::WHITE as u8, "white_king.svg"),
-            (Piece::KING as u8 | Piece::BLACK as u8, "black_king.svg"),
-            (Piece::QUEEN as u8 | Piece::WHITE as u8, "white_queen.svg"),
-            (Piece::QUEEN as u8 | Piece::BLACK as u8, "black_queen.svg"),
+            (
+                Piece::PAWN as u8 | Piece::WHITE as u8,
+                egui::include_image!("../assets/white_pawn.svg"),
+            ),
+            (
+                Piece::PAWN as u8 | Piece::BLACK as u8,
+                egui::include_image!("../assets/black_pawn.svg"),
+            ),
+            (
+                Piece::BISHOP as u8 | Piece::WHITE as u8,
+                egui::include_image!("../assets/white_bishop.svg"),
+            ),
+            (
+                Piece::BISHOP as u8 | Piece::BLACK as u8,
+                egui::include_image!("../assets/black_bishop.svg"),
+            ),
+            (
+                Piece::KNIGHT as u8 | Piece::WHITE as u8,
+                egui::include_image!("../assets/white_knight.svg"),
+            ),
+            (
+                Piece::KNIGHT as u8 | Piece::BLACK as u8,
+                egui::include_image!("../assets/black_knight.svg"),
+            ),
+            (
+                Piece::ROOK as u8 | Piece::WHITE as u8,
+                egui::include_image!("../assets/white_rook.svg"),
+            ),
+            (
+                Piece::ROOK as u8 | Piece::BLACK as u8,
+                egui::include_image!("../assets/black_rook.svg"),
+            ),
+            (
+                Piece::KING as u8 | Piece::WHITE as u8,
+                egui::include_image!("../assets/white_king.svg"),
+            ),
+            (
+                Piece::KING as u8 | Piece::BLACK as u8,
+                egui::include_image!("../assets/black_king.svg"),
+            ),
+            (
+                Piece::QUEEN as u8 | Piece::WHITE as u8,
+                egui::include_image!("../assets/white_queen.svg"),
+            ),
+            (
+                Piece::QUEEN as u8 | Piece::BLACK as u8,
+                egui::include_image!("../assets/black_queen.svg"),
+            ),
         ];
 
-        for (piece, path) in pieces {
-            images.insert(
-                piece,
-                //egui::Image::new(format!("bytes://../assets/{}", path)),
-                egui::Image::new("file://../assets/black_bishop.svg"),
-            );
+        for (piece, img_src) in pieces {
+            images.insert(piece, egui::Image::new(img_src));
         }
 
         Self { images }
@@ -88,17 +120,41 @@ impl<'a> ChessAssets<'a> {
 
 pub struct Board {
     squares: [u8; 64],
-    turn: bool,
+    _turn: bool,
 }
 
 impl Default for Board {
     fn default() -> Self {
         let mut board = Board {
             squares: [Piece::NONE as u8; 64],
-            turn: false,
+            _turn: false,
         };
 
-        board.squares[0] = Piece::PAWN as u8 | Piece::WHITE as u8;
+        board.squares[0] = Piece::ROOK as u8 | Piece::BLACK as u8;
+        board.squares[1] = Piece::KNIGHT as u8 | Piece::BLACK as u8;
+        board.squares[2] = Piece::BISHOP as u8 | Piece::BLACK as u8;
+        board.squares[3] = Piece::QUEEN as u8 | Piece::BLACK as u8;
+        board.squares[4] = Piece::KING as u8 | Piece::BLACK as u8;
+        board.squares[5] = Piece::BISHOP as u8 | Piece::BLACK as u8;
+        board.squares[6] = Piece::KNIGHT as u8 | Piece::BLACK as u8;
+        board.squares[7] = Piece::ROOK as u8 | Piece::BLACK as u8;
+
+        for i in 8..16 {
+            board.squares[i] = Piece::PAWN as u8 | Piece::BLACK as u8;
+        }
+
+        for i in 48..56 {
+            board.squares[i] = Piece::PAWN as u8 | Piece::WHITE as u8;
+        }
+
+        board.squares[56] = Piece::ROOK as u8 | Piece::WHITE as u8;
+        board.squares[57] = Piece::KNIGHT as u8 | Piece::WHITE as u8;
+        board.squares[58] = Piece::BISHOP as u8 | Piece::WHITE as u8;
+        board.squares[59] = Piece::QUEEN as u8 | Piece::WHITE as u8;
+        board.squares[60] = Piece::KING as u8 | Piece::WHITE as u8;
+        board.squares[61] = Piece::BISHOP as u8 | Piece::WHITE as u8;
+        board.squares[62] = Piece::KNIGHT as u8 | Piece::WHITE as u8;
+        board.squares[63] = Piece::ROOK as u8 | Piece::WHITE as u8;
 
         board
     }
@@ -130,7 +186,7 @@ impl Board {
                 ui.painter()
                     .rect_filled(rect, 0.0, self.tile_color_at(x, y));
 
-                let board_pos = x * 8 + y;
+                let board_pos = x + y * 8;
                 if let Some(piece_img) = ChessAssets::get(assets, self.squares[board_pos]) {
                     ui.put(
                         rect,
