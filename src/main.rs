@@ -121,7 +121,7 @@ impl<'a> ChessAssets<'a> {
 pub struct Board {
     squares: [u8; 64],
     _turn: bool,
-    drag: Option<egui::Pos2>,
+    drag: Option<usize>,
 }
 
 impl Default for Board {
@@ -174,50 +174,57 @@ impl Board {
 
         for x in 0..8 {
             for y in 0..8 {
+                let board_pos = x + y * 8;
                 let (xa, ya) = if size.x > size.y {
                     (x as f32 * tile_size + offset, y as f32 * tile_size)
                 } else {
                     (x as f32 * tile_size, y as f32 * tile_size + offset)
                 };
 
-                let rect = egui::Rect::from_two_pos(
+                let tile_rect = egui::Rect::from_two_pos(
                     egui::Pos2::new(xa, ya),
                     egui::Pos2::new(xa + tile_size, ya + tile_size),
                 );
 
                 ui.painter()
-                    .rect_filled(rect, 0.0, self.tile_color_at(x, y));
+                    .rect_filled(tile_rect, 0.0, self.tile_color_at(x, y));
 
-                let board_pos = x + y * 8;
-                // if let Some(piece_img) = ChessAssets::get(assets, self.squares[board_pos]) {
-                //     ui.put(
-                //         rect,
-                //         piece_img.clone().fit_to_exact_size(egui::Vec2 {
-                //             x: tile_size,
-                //             y: tile_size,
-                //         }),
-                //     );
-                // }
+                if let Some(pointer_pos) = ui.input(|i| i.pointer.latest_pos()) {
+                    if self.drag.is_some() && Some(board_pos) != self.drag {
+                        if pointer_pos.x >= xa
+                            && pointer_pos.x <= xa + tile_size
+                            && pointer_pos.y >= ya
+                            && pointer_pos.y <= ya + tile_size
+                        {
+                            ui.painter().rect_filled(
+                                tile_rect,
+                                0.0,
+                                egui::Color32::from_rgba_premultiplied(0, 0, 0, 50),
+                            );
+                        }
+                    }
+                }
 
                 // Check for drag interaction
                 if ui
-                    .interact(rect, egui::Id::new((x, y)), egui::Sense::click_and_drag())
+                    .interact(
+                        tile_rect,
+                        egui::Id::new((x, y)),
+                        egui::Sense::click_and_drag(),
+                    )
                     .drag_started()
                 {
-                    self.drag = Some(egui::Pos2::new(x as f32, y as f32));
+                    println!("Drag started at {:?}", board_pos);
+                    self.drag = Some(board_pos);
                 }
 
                 // Render piece
                 if self.squares[board_pos] != Piece::NONE as u8 {
                     // If this is the dragged piece, skip rendering it here
-                    let cur_pos = egui::Pos2 {
-                        x: x as f32,
-                        y: y as f32,
-                    };
-                    if Some(cur_pos) != self.drag {
+                    if Some(board_pos) != self.drag {
                         if let Some(piece_img) = ChessAssets::get(assets, self.squares[board_pos]) {
                             ui.put(
-                                rect,
+                                tile_rect,
                                 piece_img.clone().fit_to_exact_size(egui::Vec2 {
                                     x: tile_size,
                                     y: tile_size,
@@ -241,17 +248,8 @@ impl Board {
                             ),
                         );
 
-                        // if drag_rect.intersects(rect) {
-                        //     ui.painter().rect_filled(
-                        //         rect,
-                        //         0.0,
-                        //         egui::Color32::from_rgba_premultiplied(0, 0, 0, 100),
-                        //     );
-
-                        let drag_board_pos =
-                            (init_drag_pos.x as usize) + (init_drag_pos.y as usize) * 8;
                         if let Some(piece_img) =
-                            ChessAssets::get(assets, self.squares[drag_board_pos])
+                            ChessAssets::get(assets, self.squares[init_drag_pos])
                         {
                             ui.put(
                                 drag_rect,
@@ -261,33 +259,26 @@ impl Board {
                                 }),
                             );
                         }
-                        // }
                     }
                 }
 
-                println!("{:?}", self.drag);
-
                 // Handle drop
-                if ui.input(|i| i.pointer.any_released()) {
-                    println!("Pointer released");
-                    if let Some(init_drag_pos) = self.drag {
-                        if let Some(pointer_pos) = ui.input(|i| i.pointer.interact_pos()) {
-                            let end_col =
-                                ((pointer_pos.x - rect.left()) / tile_size).floor() as usize;
-                            let end_row =
-                                ((pointer_pos.y - rect.top()) / tile_size).floor() as usize;
-
+                if let Some(init_drag_pos) = self.drag {
+                    if let Some(pointer_pos) = ui.input(|i| i.pointer.interact_pos()) {
+                        if ui.input(|i| i.pointer.any_released()) {
                             // Move the piece
-                            if end_row < 8 && end_col < 8 {
-                                let init_board_pos =
-                                    (init_drag_pos.x as usize) + (init_drag_pos.y as usize) * 8;
-
-                                let destination_board_pos = end_col + end_row * 8;
-                                self.squares[destination_board_pos] = self.squares[init_board_pos];
-                                self.squares[init_board_pos] = Piece::NONE as u8;
+                            let end_col =
+                                ((pointer_pos.x - tile_rect.left()) / tile_size).floor() as usize;
+                            let end_row =
+                                ((pointer_pos.y - tile_rect.top()) / tile_size).floor() as usize;
+                            let destination_board_pos = end_col + end_row * 8;
+                            if end_row < 8 && end_col < 8 && init_drag_pos != destination_board_pos
+                            {
+                                self.squares[destination_board_pos] = self.squares[init_drag_pos];
+                                self.squares[init_drag_pos] = Piece::NONE as u8;
                             }
+                            self.drag = None;
                         }
-                        self.drag = None;
                     }
                 }
             }
@@ -296,9 +287,11 @@ impl Board {
 
     pub fn tile_color_at(&self, x: usize, y: usize) -> egui::Color32 {
         if (x + y) % 2 == 0 {
-            egui::Color32::from_rgb(236, 212, 179)
+            // rgb(234, 233, 211)
+            egui::Color32::from_rgb(234, 233, 211)
         } else {
-            egui::Color32::from_rgb(53, 45, 45)
+            // rgb(75, 115, 152)
+            egui::Color32::from_rgb(75, 115, 152)
         }
     }
 }
