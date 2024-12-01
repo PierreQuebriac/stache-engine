@@ -131,8 +131,7 @@ impl ChessApp<'_> {
                     )
                     .drag_started()
                     && (self.board.white_turn
-                        == (self.board.squares[board_pos] & chess::Piece::WHITE as u8
-                            == chess::Piece::WHITE as u8))
+                        == chess::Piece::is_white_u8(self.board.squares[board_pos]))
                 {
                     self.drag = Some(board_pos);
                 }

@@ -29,6 +29,23 @@ impl Piece {
     pub fn is_piece(&self) -> bool {
         *self as u8 & 7 != 0
     }
+
+    #[allow(dead_code)]
+    pub fn is_piece_u8(value: u8) -> bool {
+        value & 7 != 0
+    }
+
+    #[allow(dead_code)]
+    pub fn is_white_u8(value: u8) -> bool {
+        assert!(Piece::is_piece_u8(value));
+        value & Piece::WHITE as u8 != 0
+    }
+
+    #[allow(dead_code)]
+    pub fn is_black_u8(value: u8) -> bool {
+        assert!(Piece::is_piece_u8(value));
+        value & Piece::BLACK as u8 != 0
+    }
 }
 
 pub struct Board {
