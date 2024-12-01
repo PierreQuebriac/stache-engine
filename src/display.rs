@@ -1,7 +1,7 @@
 use crate::chess;
 use std::collections::HashMap;
 pub struct ChessAssets<'a> {
-    images: HashMap<u8, egui::Image<'a>>,
+    images: HashMap<chess::Piece, egui::Image<'a>>,
 }
 
 impl<'a> ChessAssets<'a> {
@@ -11,51 +11,51 @@ impl<'a> ChessAssets<'a> {
         // Map pieces to their SVG file paths
         let pieces = [
             (
-                chess::Piece::PAWN as u8 | chess::Piece::WHITE as u8,
+                chess::Piece::new(chess::PieceType::Pawn, Some(chess::Color::White)),
                 egui::include_image!("../assets/white_pawn.svg"),
             ),
             (
-                chess::Piece::PAWN as u8 | chess::Piece::BLACK as u8,
+                chess::Piece::new(chess::PieceType::Pawn, Some(chess::Color::Black)),
                 egui::include_image!("../assets/black_pawn.svg"),
             ),
             (
-                chess::Piece::BISHOP as u8 | chess::Piece::WHITE as u8,
+                chess::Piece::new(chess::PieceType::Bishop, Some(chess::Color::White)),
                 egui::include_image!("../assets/white_bishop.svg"),
             ),
             (
-                chess::Piece::BISHOP as u8 | chess::Piece::BLACK as u8,
+                chess::Piece::new(chess::PieceType::Bishop, Some(chess::Color::Black)),
                 egui::include_image!("../assets/black_bishop.svg"),
             ),
             (
-                chess::Piece::KNIGHT as u8 | chess::Piece::WHITE as u8,
+                chess::Piece::new(chess::PieceType::Knight, Some(chess::Color::White)),
                 egui::include_image!("../assets/white_knight.svg"),
             ),
             (
-                chess::Piece::KNIGHT as u8 | chess::Piece::BLACK as u8,
+                chess::Piece::new(chess::PieceType::Knight, Some(chess::Color::Black)),
                 egui::include_image!("../assets/black_knight.svg"),
             ),
             (
-                chess::Piece::ROOK as u8 | chess::Piece::WHITE as u8,
+                chess::Piece::new(chess::PieceType::Rook, Some(chess::Color::White)),
                 egui::include_image!("../assets/white_rook.svg"),
             ),
             (
-                chess::Piece::ROOK as u8 | chess::Piece::BLACK as u8,
+                chess::Piece::new(chess::PieceType::Rook, Some(chess::Color::Black)),
                 egui::include_image!("../assets/black_rook.svg"),
             ),
             (
-                chess::Piece::KING as u8 | chess::Piece::WHITE as u8,
+                chess::Piece::new(chess::PieceType::King, Some(chess::Color::White)),
                 egui::include_image!("../assets/white_king.svg"),
             ),
             (
-                chess::Piece::KING as u8 | chess::Piece::BLACK as u8,
+                chess::Piece::new(chess::PieceType::King, Some(chess::Color::Black)),
                 egui::include_image!("../assets/black_king.svg"),
             ),
             (
-                chess::Piece::QUEEN as u8 | chess::Piece::WHITE as u8,
+                chess::Piece::new(chess::PieceType::Queen, Some(chess::Color::White)),
                 egui::include_image!("../assets/white_queen.svg"),
             ),
             (
-                chess::Piece::QUEEN as u8 | chess::Piece::BLACK as u8,
+                chess::Piece::new(chess::PieceType::Queen, Some(chess::Color::Black)),
                 egui::include_image!("../assets/black_queen.svg"),
             ),
         ];
@@ -68,7 +68,7 @@ impl<'a> ChessAssets<'a> {
     }
 
     /// Retrieve a preloaded image for a piece
-    pub fn get(&self, piece: u8) -> Option<&egui::Image<'a>> {
+    pub fn get(&self, piece: chess::Piece) -> Option<&egui::Image<'a>> {
         self.images.get(&piece)
     }
 }
@@ -131,13 +131,13 @@ impl ChessApp<'_> {
                     )
                     .drag_started()
                     && (self.board.white_turn
-                        == chess::Piece::is_white_u8(self.board.squares[board_pos]))
+                        == (self.board.squares[board_pos].color() == Some(chess::Color::White)))
                 {
                     self.drag = Some(board_pos);
                 }
 
                 // Render piece
-                if self.board.squares[board_pos] != chess::Piece::NONE as u8 {
+                if self.board.squares[board_pos] != chess::Piece::NONE {
                     // If this is the dragged piece, skip rendering it here
                     if Some(board_pos) != self.drag {
                         if let Some(piece_img) =
@@ -197,7 +197,7 @@ impl ChessApp<'_> {
                                 //TODO Check if the move is valid
                                 self.board.squares[destination_board_pos] =
                                     self.board.squares[init_drag_pos];
-                                self.board.squares[init_drag_pos] = chess::Piece::NONE as u8;
+                                self.board.squares[init_drag_pos] = chess::Piece::NONE;
 
                                 self.board.white_turn = !self.board.white_turn;
                             }
